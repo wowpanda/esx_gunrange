@@ -1,5 +1,6 @@
 Config = {}
-Config.Locale = 'fin'
+Config.ChatMessages = false
+Config.Locale = 'en'
 
 
 Config.targets = {

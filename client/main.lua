@@ -8,10 +8,11 @@ local target = nil	--
 local cTCoords = {} -- Current target coords 
 local points = 0 --
 local count = 0 --
+local showBoard = false
 local GUI  = {} --
-GUI.Time   = 0
+GUI.Time  = 0
+ESX  = nil
 
-ESX                             = nil
 Citizen.CreateThread(function()
   while ESX == nil do
    TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
@@ -27,6 +28,7 @@ Citizen.CreateThread(function()
 
 	if(GetDistanceBetweenCoords(coords,821.52,-2163.37,29.65, true) < 20.0) then
 		DrawMarker(1,821.52,-2163.37,28.6, 0.0, 0.0, 0.0, 0, 0.0, 0.0,1.0,1.0,0.2,255,0,0,60, false, true, 2, false, false, false, false)
+		DrawMarker(1,816.95,-2161.97,28.6, 0.0, 0.0, 0.0, 0, 0.0, 0.0,1.0,1.0,0.2,255,0,0,60, false, true, 2, false, false, false, false)
 	end
 
 	if sShoot then
@@ -35,7 +37,13 @@ Citizen.CreateThread(function()
 		else
 			Citizen.Wait(5000)
 			sShoot = false
-			TriggerServerEvent('gunrange:showresulttoNearbyPlayers',cDif,points,mTargets)
+
+			if Config.ChatMessages == true then
+				TriggerServerEvent('gunrange:showresulttoNearbyPlayers',cDif,points,mTargets)
+			end
+
+				TriggerServerEvent('gunrange:updateScoreboard',cDif,points,mTargets)
+				TriggerEvent('gunrange:stop')
 		end
 
 		if target ~= nil then
@@ -85,7 +93,7 @@ Citizen.CreateThread(function()
 						spwnT = false
 						end
 					else
-						drawTxt(0.85, 0.82, 1.0,1.0,2.13, _U('you_got')..points.._U('points'), 255, 255, 255, 240)
+						drawTxt(0.85, 0.82, 1.0,1.0,2.13, _U('you_got')..points.._U('point'), 255, 255, 255, 240)
 					end
 				else
 				coutDown = coutDown - 1
@@ -116,9 +124,15 @@ AddEventHandler('gunrange:hasEnteredMarker', function(zone)
 		if zone == 'gunrange' then
 			 if sShoot ~= true then 
 				CurrentAction     = 'start'
-				CurrentActionMsg  = _U('actionMessage')--"Paina ~INPUT_PICKUP~ avataksesi valikko."
+				CurrentActionMsg  = _U('actionMessage')
 				CurrentActionData = {}
 			end
+		end
+
+		if zone == 'scores' then
+			CurrentAction     = 'scores'
+			CurrentActionMsg  = _U('show_board')
+			CurrentActionData = {}
 		end
 end)
 
@@ -138,6 +152,14 @@ Citizen.CreateThread(function()
 				currentZone = 'gunrange'
 			end
 
+
+			if(GetDistanceBetweenCoords(coords,816.95,-2161.97,29.61, true) <= 1) then
+				isInMarker  = true
+				currentZone = 'scores'
+			end
+
+			
+
 			
 			if isInMarker and not hasAlreadyEnteredMarker then
 				hasAlreadyEnteredMarker = true
@@ -153,6 +175,7 @@ Citizen.CreateThread(function()
 end)
 AddEventHandler('gunrange:hasExitedMarker', function(zone)
 CurrentAction = nil
+showBoard = false
 end)
 
 
@@ -172,11 +195,15 @@ Citizen.CreateThread(function()
 				if CurrentAction == 'start' then
 					ESX.TriggerServerCallback('gunrange:canshoot',function(approved)
 						if approved then
-							openDifficultyMenu()
+							openMenu()
 						else
 							ESX.ShowNotification(_U('wait_for_turn'))
 						end
 					end)
+				end
+
+				if CurrentAction == 'scores' then
+					showSBoard()
 				end
 
 				CurrentAction = nil
@@ -188,7 +215,7 @@ Citizen.CreateThread(function()
 end)
 
 
-function openDifficultyMenu()
+function openMenu()
 count = 0
 points = 0
 coutDown = 300
@@ -230,6 +257,7 @@ local elements = {
 			mTargets = data2.current.targets
 			sShoot = true
 	  		spwnT = true
+	  		TriggerEvent('gunrange:start')
 	  		TriggerServerEvent('gunrange:sShoot',wTime,mTargets)
 			ESX.UI.Menu.CloseAll()
 
@@ -248,5 +276,42 @@ local coords = GetEntityCoords(GetPlayerPed(-1))
 end)
 
 
+function DrawText3D(x,y,z, text)
+    local onScreen,_x,_y=World3dToScreen2d(x,y,z)
+    local px,py,pz=table.unpack(GetGameplayCamCoords())
+    
+    SetTextScale(0.4, 0.4)
+    SetTextFont(4)
+    SetTextProportional(1)
+    SetTextColour(255, 255, 255, 215)
+    SetTextEntry("STRING")
+    SetTextCentre(1)
+    AddTextComponentString(text)
+    DrawText(_x,_y)
+    local factor = (string.len(text)) / 370
+ end
+
+
+
+function showSBoard()
+ESX.TriggerServerCallback('gunrange:GetScores',function(s)
+scores = s
+
+showBoard = true
+
+Citizen.CreateThread(function()
+	while showBoard do
+	Citizen.Wait(1)
+		SetFollowPedCamViewMode(4)
+		DrawText3D(815.38,-2161.978,31.2,_U('last_10'))
+		if #scores > 0 then
+			for i=1,#scores do
+				DrawText3D(815.38,-2161.978,31.2-(i/14), _U('name')..scores[i].name.." | ".._U('difficulty_2')..scores[i].dif.." | ".._U('targets_2')..scores[i].tar.." | ".._U('points_2')..scores[i].score )
+			end
+		end
+	end
+end)
+end)
+end
 
 

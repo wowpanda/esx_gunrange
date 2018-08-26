@@ -1,3 +1,4 @@
+local scores = {}
 local canStart = true
 ESX = nil
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
@@ -56,3 +57,19 @@ AddEventHandler('gunrange:showresulttoNearbyPlayers',function(difficulty,points,
 end)
 
 
+RegisterNetEvent('gunrange:updateScoreboard')
+AddEventHandler('gunrange:updateScoreboard',function(difficulty,points,targets)
+  getIdentity(source, function(data)
+    name = data.firstname..' '..data.lastname
+    table.insert(scores,1,{name=name,dif=difficulty,tar=targets,score=points})
+  end)
+
+  if #scores > 10 then
+    table.remove(scores,#scores)
+  end
+end)
+
+
+ESX.RegisterServerCallback('gunrange:GetScores',function(source,cb)
+  cb(scores)
+end)
